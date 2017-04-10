@@ -88,6 +88,9 @@ extern "C"
 
 #define GLOBAL_INITIALIZE_STRUCT_FIELD(structType, destination, type, name) GlobalInitialize_##type((char*)destination+offsetof(structType, name));
 #define GLOBAL_DEINITIALIZE_STRUCT_FIELD(structType, destination, type, name) GlobalDeinitialize_##type((char*)destination+offsetof(structType, name));
+
+#define PACKAGE_2_PARAMETERS(x,y) ,(x,y)
+
 /**
 * @def DECLARE_STRUCT(name, ...)
 * This macro allows the definition of a struct type that can then be used as
@@ -106,7 +109,7 @@ extern "C"
     REFLECTED_STRUCT(name) \
     /* Codes_SRS_SERIALIZER_99_082:[ DECLARE_STRUCT's field<n>Name argument shall uniquely name a field within the struct.] */ \
     FOR_EACH_2_KEEP_1(REFLECTED_FIELD, name, __VA_ARGS__) \
-    TO_AGENT_DATA_TYPE(name, __VA_ARGS__) \
+    TO_AGENT_DATA_TYPE(name, DROP_FIRST_COMMA_FROM_ARGS(FOR_EACH_2(PACKAGE_2_PARAMETERS, __VA_ARGS__))) \
     /*Codes_SRS_SERIALIZER_99_042:[ The parameter types are either predefined parameter types (specs SRS_SERIALIZER_99_004-SRS_SERIALIZER_99_014) or a type introduced by DECLARE_STRUCT.]*/ \
     static AGENT_DATA_TYPES_RESULT FromAGENT_DATA_TYPE_##name(const AGENT_DATA_TYPE* source, name* destination) \
     { \
@@ -382,11 +385,13 @@ FOR_EACH_1_COUNTED(DROP_IF_EMPTY, C1(__VA_ARGS__))
 WITH_DATA(x, y), WITH_DATA(x2, y2) to a list of arguments consumed by the macro that marshalls a struct, like:
 x, y, x2, y2
 Actions are discarded, since no marshalling will be done for those when sending state data */
-#define TO_AGENT_DT_EXPAND_MODEL_PROPERTY(x, y) ,x,y
+#define ELEMENT_PAIR_AS_STRING(ep) FIELD_AS_STRING ep
 
-#define TO_AGENT_DT_EXPAND_MODEL_REPORTED_PROPERTY(x, y) ,x,y
+#define TO_AGENT_DT_EXPAND_MODEL_PROPERTY(x, y) ,(x,y)
 
-#define TO_AGENT_DT_EXPAND_MODEL_DESIRED_PROPERTY(x, y, ...) ,x,y
+#define TO_AGENT_DT_EXPAND_MODEL_REPORTED_PROPERTY(x, y) ,(x,y)
+
+#define TO_AGENT_DT_EXPAND_MODEL_DESIRED_PROPERTY(x, y, ...) ,(x,y)
 
 #define TO_AGENT_DT_EXPAND_MODEL_ACTION(...) 
 
@@ -403,7 +408,7 @@ Actions are discarded, since no marshalling will be done for those when sending 
         AGENT_DATA_TYPES_RESULT result = AGENT_DATA_TYPES_OK; \
         size_t iMember = 0; \
         DEFINITION_THAT_CAN_SUSTAIN_A_COMMA_STEAL(phantomName, 1); \
-        const char* memberNames[IF(DIV2(C1(COUNT_ARG(__VA_ARGS__))), DIV2(C1(COUNT_ARG(__VA_ARGS__))), 1)] = { 0 }; \
+        const char* memberNames[IF(C1(COUNT_ARG(__VA_ARGS__)), C1(COUNT_ARG(__VA_ARGS__)), 1)] = { 0 }; \
         size_t memberCount = sizeof(memberNames) / sizeof(memberNames[0]); \
         (void)value; \
         if (memberCount == 0) \
@@ -414,11 +419,11 @@ Actions are discarded, since no marshalling will be done for those when sending 
         { \
             AGENT_DATA_TYPE members[sizeof(memberNames) / sizeof(memberNames[0])]; \
             DEFINITION_THAT_CAN_SUSTAIN_A_COMMA_STEAL(phantomName, 2); \
-            FOR_EACH_2(FIELD_AS_STRING, EXPAND_TWICE(__VA_ARGS__)) \
+            FOR_EACH_1(ELEMENT_PAIR_AS_STRING, EXPAND_TWICE(__VA_ARGS__)) \
             iMember = 0; \
             { \
                 DEFINITION_THAT_CAN_SUSTAIN_A_COMMA_STEAL(phantomName, 3); \
-                FOR_EACH_2(CREATE_AGENT_DATA_TYPE, EXPAND_TWICE(__VA_ARGS__)) \
+                FOR_EACH_1(CREATE_AGENT_DATA_TYPE_ELEMENT_PAIR, EXPAND_TWICE(__VA_ARGS__)) \
                 {DEFINITION_THAT_CAN_SUSTAIN_A_COMMA_STEAL(phantomName, 4); } \
                 result = ((result == AGENT_DATA_TYPES_OK) && (Create_AGENT_DATA_TYPE_from_Members(destination, #name, sizeof(memberNames) / sizeof(memberNames[0]), memberNames, members) == AGENT_DATA_TYPES_OK)) \
                             ? AGENT_DATA_TYPES_OK \
@@ -439,33 +444,53 @@ Actions are discarded, since no marshalling will be done for those when sending 
 
 #define REFLECTED_LIST_HEAD(name) \
     static const REFLECTED_DATA_FROM_DATAPROVIDER ALL_REFLECTED(name) = { &C2(REFLECTED_, C1(DEC(__COUNTER__))) };
-#define REFLECTED_STRUCT(name) \
-    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(INC(__COUNTER__))) = { REFLECTION_STRUCT_TYPE,               &C2(REFLECTED_, C1(DEC(DEC(__COUNTER__)))), { {0}, {0}, {0}, {TOSTRING(name)}, {0}, {0}, {0}, {0}} };
-#define REFLECTED_FIELD(XstructName, XfieldType, XfieldName) \
-    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(INC(__COUNTER__))) = { REFLECTION_FIELD_TYPE,                &C2(REFLECTED_, C1(DEC(DEC(__COUNTER__)))), { {0}, {0}, {0}, {0}, {TOSTRING(XfieldName), TOSTRING(XfieldType), TOSTRING(XstructName)}, {0}, {0}, {0} } };
-#define REFLECTED_MODEL(name) \
-    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(INC(__COUNTER__))) = { REFLECTION_MODEL_TYPE,                &C2(REFLECTED_, C1(DEC(DEC(__COUNTER__)))), { {0}, {0}, {0}, {0}, {0}, {0}, {0}, {TOSTRING(name)} } };
-#define REFLECTED_PROPERTY(type, name, modelName) \
-    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(INC(__COUNTER__))) = { REFLECTION_PROPERTY_TYPE,             &C2(REFLECTED_, C1(DEC(DEC(__COUNTER__)))), { {0}, {0}, {0}, {0}, {0}, {TOSTRING(name), TOSTRING(type), Create_AGENT_DATA_TYPE_From_Ptr_##modelName##name, offsetof(modelName, name), sizeof(type), TOSTRING(modelName)}, {0}, {0} } };
-#define REFLECTED_REPORTED_PROPERTY(type, name, modelName) \
-    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(INC(__COUNTER__))) = { REFLECTION_REPORTED_PROPERTY_TYPE,    &C2(REFLECTED_, C1(DEC(DEC(__COUNTER__)))), { {0}, {0}, {TOSTRING(name), TOSTRING(type), Create_AGENT_DATA_TYPE_From_Ptr_##modelName##name, offsetof(modelName, name), sizeof(type), TOSTRING(modelName)}, {0}, {0}, {0}, {0}, {0} } };
 
+#define REFLECTED_STRUCT_ID(name,COUNTER) \
+    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(COUNTER)) = { REFLECTION_STRUCT_TYPE,               &C2(REFLECTED_, C1(DEC(COUNTER))), { {0}, {0}, {0}, {TOSTRING(name)}, {0}, {0}, {0}, {0}} };
+#define REFLECTED_STRUCT_ID_(name,COUNTER) REFLECTED_STRUCT_ID(name, COUNTER)
+#define REFLECTED_STRUCT(name) REFLECTED_STRUCT_ID_(name, __COUNTER__) 
+
+#define REFLECTED_FIELD_ID(XstructName, XfieldType, XfieldName, COUNTER) \
+    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(COUNTER)) = { REFLECTION_FIELD_TYPE,                &C2(REFLECTED_, C1(DEC(COUNTER))), { {0}, {0}, {0}, {0}, {TOSTRING(XfieldName), TOSTRING(XfieldType), TOSTRING(XstructName)}, {0}, {0}, {0} } };
+#define REFLECTED_FIELD_ID_(XstructName, XfieldType, XfieldName, COUNTER) REFLECTED_FIELD_ID(XstructName, XfieldType, XfieldName, COUNTER)
+#define REFLECTED_FIELD(XstructName, XfieldType, XfieldName) REFLECTED_FIELD_ID_(XstructName, XfieldType, XfieldName, __COUNTER__)
+
+#define REFLECTED_MODEL_ID(name,COUNTER) \
+    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(COUNTER)) = { REFLECTION_MODEL_TYPE,                &C2(REFLECTED_, C1(DEC(COUNTER))), { {0}, {0}, {0}, {0}, {0}, {0}, {0}, {TOSTRING(name)} } };
+#define REFLECTED_MODEL_ID_(name,COUNTER) REFLECTED_MODEL_ID(name, COUNTER)
+#define REFLECTED_MODEL(name) REFLECTED_MODEL_ID(name, __COUNTER__)
+
+#define REFLECTED_PROPERTY_ID(type, name, modelName,COUNTER) \
+    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(COUNTER)) = { REFLECTION_PROPERTY_TYPE,             &C2(REFLECTED_, C1(DEC(COUNTER))), { {0}, {0}, {0}, {0}, {0}, {TOSTRING(name), TOSTRING(type), Create_AGENT_DATA_TYPE_From_Ptr_##modelName##name, offsetof(modelName, name), sizeof(type), TOSTRING(modelName)}, {0}, {0} } };
+#define REFLECTED_PROPERTY_ID_(type, name, modelName, COUNTER) REFLECTED_PROPERTY_ID(type, name, modelName, COUNTER)
+#define REFLECTED_PROPERTY(type, name, modelName) REFLECTED_PROPERTY_ID_(type, name, modelName, __COUNTER__)
+
+#define REFLECTED_REPORTED_PROPERTY_ID(type, name, modelName, COUNTER) \
+    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(COUNTER)) = { REFLECTION_REPORTED_PROPERTY_TYPE,    &C2(REFLECTED_, C1(DEC(COUNTER))), { {0}, {0}, {TOSTRING(name), TOSTRING(type), Create_AGENT_DATA_TYPE_From_Ptr_##modelName##name, offsetof(modelName, name), sizeof(type), TOSTRING(modelName)}, {0}, {0}, {0}, {0}, {0} } };
+#define REFLECTED_REPORTED_PROPERTY_ID_(type, name, modelName, COUNTER) REFLECTED_REPORTED_PROPERTY_ID(type, name, modelName, COUNTER)
+#define REFLECTED_REPORTED_PROPERTY(type, name, modelName) REFLECTED_REPORTED_PROPERTY_ID_(type, name, modelName, __COUNTER__)
 
 #define REFLECTED_DESIRED_PROPERTY_WITH_ON_DESIRED_PROPERTY_CHANGE(type, name, modelName, COUNTER, onDesiredPropertyChange) \
-    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(INC(COUNTER))) =      { REFLECTION_DESIRED_PROPERTY_TYPE,     &C2(REFLECTED_, C1(DEC(COUNTER))),         { {0}, {onDesiredPropertyChange, DesiredPropertyInitialize_##modelName##name, DesiredPropertyDeinitialize_##modelName##name, TOSTRING(name), TOSTRING(type), (int(*)(const AGENT_DATA_TYPE*, void*))FromAGENT_DATA_TYPE_##type, offsetof(modelName, name), sizeof(type), TOSTRING(modelName)}, {0}, {0}, {0}, {0}, {0}, {0}} };
+    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(COUNTER)) =      { REFLECTION_DESIRED_PROPERTY_TYPE,     &C2(REFLECTED_, C1(DEC(COUNTER))),         { {0}, {onDesiredPropertyChange, DesiredPropertyInitialize_##modelName##name, DesiredPropertyDeinitialize_##modelName##name, TOSTRING(name), TOSTRING(type), (int(*)(const AGENT_DATA_TYPE*, void*))FromAGENT_DATA_TYPE_##type, offsetof(modelName, name), sizeof(type), TOSTRING(modelName)}, {0}, {0}, {0}, {0}, {0}, {0}} };
 
-#define REFLECTED_DESIRED_PROPERTY(type, name, modelName, ...)                                                              \
+#define REFLECTED_DESIRED_PROPERTY_ID(type, name, modelName, COUNTER, ...)                                                       \
     IF(COUNT_ARG(__VA_ARGS__),                                                                                              \
-        DELAY(REFLECTED_DESIRED_PROPERTY_WITH_ON_DESIRED_PROPERTY_CHANGE)(type, name, modelName,__COUNTER__, __VA_ARGS__),  \
-        DELAY(REFLECTED_DESIRED_PROPERTY_WITH_ON_DESIRED_PROPERTY_CHANGE)(type, name, modelName,DEC(__COUNTER__), NULL)     \
+        DELAY(REFLECTED_DESIRED_PROPERTY_WITH_ON_DESIRED_PROPERTY_CHANGE)(type, name, modelName, COUNTER, __VA_ARGS__),          \
+        DELAY(REFLECTED_DESIRED_PROPERTY_WITH_ON_DESIRED_PROPERTY_CHANGE)(type, name, modelName, COUNTER, NULL)                  \
     )                                                                                                                       \
 
-#define REFLECTED_ACTION(name, argc, argv, fn, modelName) \
-    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(INC(__COUNTER__))) = { REFLECTION_ACTION_TYPE,               &C2(REFLECTED_, C1(DEC(DEC(__COUNTER__)))), { {0}, {0}, {0}, {0}, {0}, {0}, {TOSTRING(name), argc, argv, fn, TOSTRING(modelName)}, {0}} };
+#define REFLECTED_DESIRED_PROPERTY_ID_(type, name, modelName, COUNTER, ...) REFLECTED_DESIRED_PROPERTY_ID(type, name, modelName, COUNTER, __VA_ARGS__)
+#define REFLECTED_DESIRED_PROPERTY(type, name, modelName, ...) REFLECTED_DESIRED_PROPERTY_ID_(type, name, modelName, __COUNTER__, __VA_ARGS__)
 
-#define REFLECTED_METHOD(name, argc, argv, fn, modelName) \
-    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(INC(__COUNTER__))) = { REFLECTION_METHOD_TYPE,               &C2(REFLECTED_, C1(DEC(DEC(__COUNTER__)))), { {TOSTRING(name), argc, argv, fn, TOSTRING(modelName)}, {0}, {0}, {0}, {0}, {0}, {0}, {0}} };
+#define REFLECTED_ACTION_ID(name, argc, argv, fn, modelName, COUNTER) \
+    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(COUNTER)) = { REFLECTION_ACTION_TYPE,               &C2(REFLECTED_, C1(DEC(COUNTER))), { {0}, {0}, {0}, {0}, {0}, {0}, {TOSTRING(name), argc, argv, fn, TOSTRING(modelName)}, {0}} };
+#define REFLECTED_ACTION_ID_(name, argc, argv, fn, modelName, COUNTER) REFLECTED_ACTION_ID(name, argc, argv, fn, modelName, COUNTER)
+#define REFLECTED_ACTION(name, argc, argv, fn, modelName) REFLECTED_ACTION_ID_(name, argc, argv, fn, modelName, __COUNTER__)
 
+#define REFLECTED_METHOD_ID(name, argc, argv, fn, modelName, COUNTER) \
+    static const REFLECTED_SOMETHING C2(REFLECTED_, C1(COUNTER)) = { REFLECTION_METHOD_TYPE,               &C2(REFLECTED_, C1(DEC(COUNTER))), { {TOSTRING(name), argc, argv, fn, TOSTRING(modelName)}, {0}, {0}, {0}, {0}, {0}, {0}, {0}} };
+#define REFLECTED_METHOD_ID_(name, argc, argv, fn, modelName, COUNTER) REFLECTED_METHOD_ID(name, argc, argv, fn, modelName, COUNTER)
+#define REFLECTED_METHOD(name, argc, argv, fn, modelName) REFLECTED_METHOD_ID_(name, argc, argv, fn, modelName, __COUNTER__)
 
 #define REFLECTED_END_OF_LIST \
     static const REFLECTED_SOMETHING C2(REFLECTED_, __COUNTER__) = {          REFLECTION_NOTHING,                   NULL,                                       { {0},{0}, {0}, {0}, {0}, {0}, {0}, {0}} };
@@ -651,6 +676,8 @@ Actions are discarded, since no marshalling will be done for those when sending 
 #define CREATE_AGENT_DATA_TYPE(type, name) \
     result = (( result==AGENT_DATA_TYPES_OK) && (ToAGENT_DATA_TYPE_##type( &(members[iMember]), value.name) == AGENT_DATA_TYPES_OK))?AGENT_DATA_TYPES_OK:AGENT_DATA_TYPES_ERROR; \
     iMember+= ((result==AGENT_DATA_TYPES_OK)?1:0);
+
+#define CREATE_AGENT_DATA_TYPE_ELEMENT_PAIR(ep) CREATE_AGENT_DATA_TYPE ep
 
 #define BUILD_DESTINATION_FIELD(type, name) \
     if(result == AGENT_DATA_TYPES_OK) \
