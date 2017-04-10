@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "azure_c_shared_utility/threadapi.h"
 #include "azure_c_shared_utility/platform.h"
+#include "azure_c_shared_utility/xlogging.h"
 #include "iothubtransporthttp.h"
 #include "schemalib.h"
 #include "serializer.h"
