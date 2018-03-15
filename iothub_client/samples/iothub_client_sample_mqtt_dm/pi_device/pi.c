@@ -14,6 +14,7 @@
 #include <sys/wait.h>
 #include <sys/utsname.h>
 
+#include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/platform.h"
 #include "azure_c_shared_utility/threadapi.h"

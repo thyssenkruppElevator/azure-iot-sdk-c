@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "azure_c_shared_utility/xlogging.h"
 #include "serializer.h"
 #include "iothub_client.h"
 

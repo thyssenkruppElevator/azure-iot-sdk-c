@@ -7,6 +7,10 @@ if(NOT ${use_mqtt})
     message(FATAL_ERROR "iothub_client_sample_device_method being generated without mqtt support")
 endif()
 
+if(NOT ${use_amqp})
+    message(FATAL_ERROR "iothub_client_sample_device_method being generated without amqp support")
+endif()
+
 compileAsC99()
 
 set(iothub_client_sample_device_method_c_files
