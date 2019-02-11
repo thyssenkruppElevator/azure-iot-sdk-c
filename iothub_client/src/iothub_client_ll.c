@@ -28,6 +28,7 @@
 
 IOTHUB_CLIENT_LL_HANDLE IoTHubClient_LL_CreateFromConnectionString(const char* connectionString, IOTHUB_CLIENT_TRANSPORT_PROVIDER protocol)
 {
+    LogInfo("S IoT Hub SDK for C, version %s", IoTHubClient_GetVersionString());
     return (IOTHUB_CLIENT_LL_HANDLE)IoTHubClientCore_LL_CreateFromConnectionString(connectionString, protocol);
 }
 
