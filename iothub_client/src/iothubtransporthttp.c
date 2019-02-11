@@ -1403,7 +1403,7 @@ static STRING_HANDLE make1EventJSONitem(PDLIST_ENTRY item, size_t *messageSizeCo
                 STRING_HANDLE asJson = STRING_new_JSON(source);
                 if (asJson == NULL)
                 {
-                    LogError("unable to STRING_new_JSON");
+                    LogError("unable to STRING_new_JSON %s \n", source);
                     STRING_delete(result);
                     result = NULL;
                 }
@@ -1480,6 +1480,11 @@ static MAKE_PAYLOAD_RESULT makePayload(HTTPTRANSPORT_PERDEVICE_DATA* deviceData,
                 /*Codes_SRS_TRANSPORTMULTITHTTP_17_067: [If there is no valid payload, IoTHubTransportHttp_DoWork shall advance to the next activity.]*/
                 if (temp == NULL) /*first item failed to create, nothing to send*/
                 {
+                    
+                    /*message failed to be inserted in payload. drop it from waitingToSend list*/
+                    PDLIST_ENTRY head = DList_RemoveHeadList(deviceData->waitingToSend); /*actually this is the same as "actual", but now it is removed*/
+                    DList_InsertTailList(&(deviceData->eventConfirmations), head);
+
                     result = MAKE_PAYLOAD_ERROR;
                     STRING_delete(*payload);
                     *payload = NULL;
@@ -1669,7 +1674,8 @@ static void DoEvent(HTTPTRANSPORT_HANDLE_DATA* handleData, HTTPTRANSPORT_PERDEVI
                 }
                 case MAKE_PAYLOAD_ERROR:
                 {
-                    LogError("unrecoverable errors while building a batch message");
+                    LogError("MAKE_PAYLOAD_ERROR while building a batch message -- dropped that message \n");
+                    IoTHubClient_LL_SendComplete(iotHubClientHandle, &(deviceData->eventConfirmations), IOTHUB_CLIENT_CONFIRMATION_ERROR); /*takes care of emptying the list too*/
                     break;
                 }
                 case MAKE_PAYLOAD_NO_ITEMS:
