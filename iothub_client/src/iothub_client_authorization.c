@@ -18,7 +18,7 @@
 
 #include "internal/iothub_client_authorization.h"
 
-#define DEFAULT_SAS_TOKEN_EXPIRY_TIME_SECS          3600
+#define DEFAULT_SAS_TOKEN_EXPIRY_TIME_SECS           45000 //3600
 #define INDEFINITE_TIME                             ((time_t)(-1))
 
 typedef struct IOTHUB_AUTHORIZATION_DATA_TAG
