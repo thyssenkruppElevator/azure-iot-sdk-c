@@ -37,7 +37,7 @@
 #include <limits.h>
 #include <inttypes.h>
 
-#define SAS_REFRESH_MULTIPLIER              .8
+#define SAS_REFRESH_MULTIPLIER              1 //.8
 #define EPOCH_TIME_T_VALUE                  0
 #define DEFAULT_MQTT_KEEPALIVE              4*60 // 4 min
 #define DEFAULT_CONNACK_TIMEOUT             30 // 30 seconds
